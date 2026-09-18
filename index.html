@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CASE FILES — สายสืบกลางคืน</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js" } }
+  </script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div class="vignette" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <div id="hud" class="hidden">
+    <div class="hud-top">
+      <div class="hud-left">
+        <span class="case-id">คดี 001</span>
+        <span class="case-title">สายสุดท้าย</span>
+      </div>
+      <div class="hud-center" id="prompt">มองรอบห้อง · WASD เดิน · E โต้ตอบ</div>
+      <div class="hud-right">
+        <button class="hud-btn" id="btn-notes">แฟ้มคดี</button>
+        <button class="hud-btn" id="btn-board">กระดาน</button>
+        <button class="hud-btn" id="btn-timeline">ไทม์ไลน์</button>
+        <button class="hud-btn" id="btn-summary">สรุปคดี</button>
+        <button class="hud-btn" id="btn-accuse">ปิดคดี</button>
+        <button class="hud-btn" id="btn-mute">เสียง</button>
+      </div>
+    </div>
+    <div id="crosshair"></div>
+  </div>
+
+  <div id="panel-evidence" class="panel-overlay hidden">
+    <div class="panel evidence-panel">
+      <header>
+        <div>
+          <p class="eyebrow" id="ev-type">เอกสาร</p>
+          <h2 id="ev-title">—</h2>
+          <p class="meta" id="ev-source">—</p>
+        </div>
+        <button class="icon-btn" data-close="panel-evidence">ปิด</button>
+      </header>
+      <div class="evidence-body">
+        <div class="evidence-visual" id="ev-visual"></div>
+        <div class="evidence-text" id="ev-body"></div>
+      </div>
+      <footer>
+        <span id="ev-status"></span>
+        <button class="btn" id="btn-pin-evidence">ปักลงกระดาน</button>
+      </footer>
+    </div>
+  </div>
+
+  <div id="panel-file" class="panel-overlay hidden">
+    <div class="panel file-panel">
+      <header>
+        <h2>แฟ้มคดี — 001</h2>
+        <button class="icon-btn" data-close="panel-file">ปิด</button>
+      </header>
+      <div class="file-grid">
+        <section>
+          <h3>ผู้เสียชีวิต</h3>
+          <div id="file-victim"></div>
+        </section>
+        <section>
+          <h3>ผู้ต้องสงสัย</h3>
+          <div id="file-suspects"></div>
+        </section>
+        <section>
+          <h3>หลักฐานที่เก็บได้</h3>
+          <div id="file-evidence" class="evidence-list"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-board" class="panel-overlay hidden">
+    <div class="panel board-panel">
+      <header>
+        <h2>กระดานสืบสวน</h2>
+        <div class="board-tools">
+          <button class="btn small" id="btn-link-mode">โหมดเชื่อมเส้น</button>
+          <button class="btn small" id="btn-clear-links">ล้างเส้น</button>
+          <button class="icon-btn" data-close="panel-board">ปิด</button>
+        </div>
+      </header>
+      <div class="board-layout">
+        <aside class="board-palette">
+          <h3>ยังไม่ได้ปัก</h3>
+          <div id="board-palette"></div>
+        </aside>
+        <div class="board-canvas-wrap">
+          <svg id="board-lines"></svg>
+          <div id="board-canvas"></div>
+        </div>
+      </div>
+      <p class="hint">ลากการ์ดขึ้นกระดาน · โหมดเชื่อมเส้น: คลิกสองใบเพื่อโยง · เกมจะไม่เฉลยว่าโยงถูกหรือผิดจนกว่าจะปิดคดี</p>
+    </div>
+  </div>
+
+  <div id="panel-timeline" class="panel-overlay hidden">
+    <div class="panel timeline-panel">
+      <header>
+        <h2>ไทม์ไลน์เหตุการณ์</h2>
+        <button class="icon-btn" data-close="panel-timeline">ปิด</button>
+      </header>
+      <div class="timeline-layout">
+        <div class="timeline-list" id="timeline-list"></div>
+        <div class="timeline-add">
+          <h3>เพิ่มเหตุการณ์</h3>
+          <label>เวลา <input id="tl-time" type="text" placeholder="21:03" /></label>
+          <label>เหตุการณ์ <input id="tl-text" type="text" placeholder="บุคคลสวมฮู้ดเข้าบันไดหนีไฟ" /></label>
+          <label>อ้างอิงหลักฐาน <select id="tl-source"></select></label>
+          <button class="btn" id="btn-tl-add">เพิ่มลงไทม์ไลน์</button>
+        </div>
+      </div>
+      <p class="hint">เรียบเรียงคืนนั้นใหม่จากหลักฐานแข็ง · ความขัดแย้งระหว่างคำให้การกับเวลาคือหัวใจคดี</p>
+    </div>
+  </div>
+
+  <div id="panel-summary" class="panel-overlay hidden">
+    <div class="panel summary-panel">
+      <header>
+        <h2>สรุปสำนวนคดี</h2>
+        <button class="icon-btn" data-close="panel-summary">ปิด</button>
+      </header>
+      <p class="hint" style="margin-top:0">เขียนสิ่งที่คุณคิดว่าเกิดขึ้น ยังไม่ต้องเลือกคนร้าย — ใช้หน้านี้เชื่อมข้อมูลก่อนส่งฟ้อง</p>
+      <div class="summary-form">
+        <label>ภาพรวมเหตุการณ์
+          <textarea id="sum-overview" rows="4" placeholder="ใครไปที่ไหน เมื่อไหร่ เกิดอะไรขึ้น..."></textarea>
+        </label>
+        <label>ความขัดแย้งที่พบ
+          <textarea id="sum-conflicts" rows="3" placeholder="คำให้การไหนสวนกับหลักฐาน/เวลา?"></textarea>
+        </label>
+        <label>ผู้ต้องสงสัยที่น่าจะเกี่ยว + เหตุผล
+          <textarea id="sum-suspects" rows="3" placeholder="เรียงจากน่าสงสัยมากไปน้อย พร้อมเหตุผล..."></textarea>
+        </label>
+        <label>หลักฐานที่คิดว่าชี้ขาด
+          <textarea id="sum-key" rows="3" placeholder="ชิ้นไหนที่ถ้าขาดไปคดีล่ม?"></textarea>
+        </label>
+        <label>ช่องโหว่ / ยังไม่ได้พิสูจน์
+          <textarea id="sum-gaps" rows="2" placeholder="ยังหาคำตอบไม่ได้เรื่องไหน?"></textarea>
+        </label>
+      </div>
+      <div class="summary-actions">
+        <button class="btn" id="btn-sum-save">บันทึกสำนวน</button>
+        <button class="btn primary" id="btn-sum-to-accuse">ไปปิดคดี →</button>
+      </div>
+      <p id="sum-saved-note" class="hint"></p>
+    </div>
+  </div>
+
+  <div id="panel-interrogate" class="panel-overlay hidden">
+    <div class="panel interrogate-panel">
+      <header>
+        <div>
+          <p class="eyebrow">ห้องสอบสวน บี</p>
+          <h2 id="iq-name">—</h2>
+        </div>
+        <button class="icon-btn" data-close="panel-interrogate">ปิด</button>
+      </header>
+      <div class="iq-body">
+        <div class="iq-log" id="iq-log"></div>
+        <div class="iq-choices" id="iq-choices"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-computer" class="panel-overlay hidden">
+    <div class="panel computer-panel">
+      <header>
+        <h2>เดสก์ท็อป — สน. ที่ 14</h2>
+        <button class="icon-btn" data-close="panel-computer">ปิด</button>
+      </header>
+      <div class="computer-layout">
+        <nav id="computer-apps"></nav>
+        <div class="computer-screen" id="computer-screen">
+          <p class="dim">เลือกแอปพลิเคชัน</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-accuse" class="panel-overlay hidden">
+    <div class="panel accuse-panel">
+      <header>
+        <h2>ปิดคดี — รายงานสุดท้าย</h2>
+        <button class="icon-btn" data-close="panel-accuse">ปิด</button>
+      </header>
+      <div id="accuse-form" class="accuse-form"></div>
+      <section>
+        <h3>หลักฐานสนับสนุน (เลือกอย่างน้อย 3 ชิ้น)</h3>
+        <div id="accuse-evidence" class="accuse-evidence"></div>
+      </section>
+      <button class="btn primary" id="btn-submit-case">ส่งรายงานปิดคดี</button>
+    </div>
+  </div>
+
+  <div id="panel-verdict" class="panel-overlay hidden">
+    <div class="panel verdict-panel">
+      <p class="eyebrow">ผลการสืบสวน</p>
+      <h2 id="verdict-title">—</h2>
+      <p id="verdict-rank" class="verdict-rank"></p>
+      <p id="verdict-summary" class="verdict-summary"></p>
+      <button class="btn primary" id="btn-verdict-close">รับทราบ</button>
+    </div>
+  </div>
+
+  <div id="interact-label" class="hidden"></div>
+
+  <div id="overlay-start" class="overlay">
+    <div class="panel start-panel">
+      <p class="eyebrow">สน. ที่ 14 — เวรกลางคืน</p>
+      <h1>CASE FILES</h1>
+      <p class="tagline">คดี 001 — สายสุดท้าย</p>
+      <p class="lede">
+        ซีอีโอเสียชีวิตในห้องทำงานชั้น 12 ช่วงกลางคืน ชื่อบนกระดานมีสี่คน
+        เกมจะไม่บอกว่าใครทำ — คุณต้องสืบเอง
+      </p>
+      <ul class="controls">
+        <li><kbd>W A S D</kbd> เดินในห้อง</li>
+        <li><kbd>เมาส์</kbd> มองรอบ</li>
+        <li><kbd>E</kbd> โต้ตอบ / ตรวจหลักฐาน</li>
+        <li><kbd>Tab</kbd> แฟ้มคดี</li>
+        <li><kbd>B</kbd> กระดานสืบสวน</li>
+        <li><kbd>T</kbd> ไทม์ไลน์</li>
+        <li><kbd>Y</kbd> สรุปสำนวน</li>
+      </ul>
+      <button id="btn-start" class="btn primary">เริ่มสืบสวน</button>
+      <p class="footnote">คุณกล่าวหาคนผิดได้ · ไม่มีจุดไฮไลต์คำตอบที่ถูก</p>
+    </div>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
